@@ -311,6 +311,11 @@ class SvgRenderer:
             return first_frame
         elif loop_type == "loop":
             loop_length = last_frame - first_frame + 1
+            if loop_length <= 0:
+                raise Exception(
+                    f"Invalid loop length: {loop_length} "
+                    f"(first frame: {first_frame}, last frame: {last_frame})"
+                )
             return first_frame + (frame_offset % loop_length)
         elif loop_type == "play once":
             return min(first_frame + frame_offset, last_frame)
