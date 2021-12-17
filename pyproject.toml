@@ -1,0 +1,24 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "xfl2svg"
+authors = [{name = "PluieElectrique"}]
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: Editors :: Vector-Based",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+]
+dynamic = ["version", "description"]
+
+[project.optional-dependencies]
+tqdm = ["tqdm"]
+
+[project.urls]
+Source = "https://github.com/PluieElectrique/xfl2svg"
