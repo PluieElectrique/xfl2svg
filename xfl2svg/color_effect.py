@@ -37,7 +37,7 @@ class ColorEffect:
                 offset = (brightness, brightness, brightness, 0)
 
         # Tint: linearly interpolate between the original color and a tint color
-        elif "tintColor" in attrib:
+        elif "tintMultiplier" in attrib:
             # color * (1 - tint_multiplier) + tint_color * tint_multiplier
             tint_multiplier = float(attrib["tintMultiplier"])
             multiplier = (
@@ -47,7 +47,7 @@ class ColorEffect:
                 1,
             )
 
-            tint_color = attrib["tintColor"]
+            tint_color = attrib.get("tintColor", "#000000")
             if not HEX_COLOR.fullmatch(tint_color):
                 raise Exception(f"Color isn't in hex format: {tint_color}")
 
