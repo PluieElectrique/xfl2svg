@@ -22,6 +22,9 @@ ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
 class SvgRenderer:
     """Render SVGs from XFL."""
 
+    # Cache the most recently used frame of a layer for faster frame lookups
+    LAST_USED_FRAME = ET.QName("xfl2svg", "lastUsedFrame")
+
     def __init__(self, xfl_reader, DOMSHAPE_CACHE_SIZE=2048):
         self.xfl_reader = xfl_reader
         self.mask_num = 1
@@ -185,22 +188,29 @@ class SvgRenderer:
             defs: {element id: SVG element that goes in <defs>}
             body: List of SVG elements
         """
-        # A <DOMLayer> is either empty or has a <frames> child
-        if len(layer) == 0:
+        # Ignore layers that are empty or too short
+        if len(layer) == 0 or frame_idx >= layer[0].get(self.xfl_reader.LAYER_LEN):
             return {}, []
-
-        frame = None
 
         # The <frames> element contains <DOMFrame> children
-        for f in layer[0]:
-            index = int(f.get("index"))
-            duration = int(f.get("duration", 1))
+        frames = layer[0]
+        # Caching the last used frame makes searching more complicated, but
+        # we'll perform a lot of .get() lookups if we don't, which is slow.
+        i = frames.get(self.LAST_USED_FRAME, 0)
+        while True:
+            frame = frames[i]
+            index = int(frame.get("index"))
+            if frame_idx < index:
+                i -= 1
+                continue
+            duration = int(frame.get("duration", 1))
             if index <= frame_idx < index + duration:
-                frame = f
                 frame_offset = frame_idx - index
                 break
-        if frame is None:
-            return {}, []
+            else:
+                i += 1
+
+        frames.set(self.LAST_USED_FRAME, i)
 
         # TODO: Handle tweens here. Requires comparing successive keyframes,
         # calculating the transformation based on the frame offset, and

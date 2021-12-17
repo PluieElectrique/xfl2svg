@@ -32,6 +32,8 @@ class XflReader(CloseOnExit):
     # Marks the bottommost (or backmost) layer of a mask's children. Value is
     # the index of the mask layer in question.
     MASK_START = ET.QName("xfl2svg", "maskStart")
+    # We cache the length of each layer on <frames> for faster frame lookups
+    LAYER_LEN = ET.QName("xfl2svg", "layerLen")
 
     def __init__(self, path):
         """Create an XflReader.
@@ -72,6 +74,9 @@ class XflReader(CloseOnExit):
             assert name not in self.symbol_paths, f"Duplicate symbol name: {name}"
             self.symbol_paths[name] = path
 
+    def close(self):
+        self.xfl.close()
+
     def get_scene_names(self):
         return list(self.scenes.keys())
 
@@ -95,7 +100,7 @@ class XflReader(CloseOnExit):
             if name not in self.scenes:
                 raise Exception(f"Scene does not exist: {name}")
             elif not isinstance(self.scenes[name], Timeline):
-                self.scenes[name] = setup_timeline(self.scenes[name])
+                self.scenes[name] = self.setup_timeline(self.scenes[name])
 
             return self.scenes[name]
         elif type == "symbol":
@@ -112,45 +117,47 @@ class XflReader(CloseOnExit):
                         raise Exception(f"Couldn't find XML file for {name}")
 
                 symbol = self.xfl.get_symbol(path)
-                self.symbols[name] = setup_timeline(symbol.find(".//{*}layers"))
+                self.symbols[name] = self.setup_timeline(symbol.find(".//{*}layers"))
 
             return self.symbols[name]
         else:
             raise Exception('Timeline type must be "scene" or "symbol"')
 
-    def close(self):
-        self.xfl.close()
+    def setup_timeline(self, layers):
+        # We mark the last layer of each mask's children with MASK_START. Since
+        # SvgRenderer iterates from bottom to top (back to front), this lets it
+        # know when it should begin a mask.
+        mask_idx = None
+        for i, layer in enumerate(layers):
+            if mask_idx is None:
+                if layer.get("layerType") == "mask":
+                    mask_idx = i
+            elif (
+                i + 1 == len(layers)
+                or int(layers[i + 1].get("parentLayerIndex", -1)) < mask_idx
+            ):
+                # Either this is the last layer or the next layer isn't in the
+                # mask. So, this is the last layer of the current mask.
+                layer.set(self.MASK_START, mask_idx)
+                mask_idx = None
 
+        return Timeline(layers, self.get_timeline_length(layers) - 1)
 
-def setup_timeline(layers):
-    # We mark the last layer of each mask's children with MASK_START. Since
-    # SvgRenderer iterates from bottom to top (back to front), this lets it
-    # know when it should begin a mask.
-    mask_idx = None
-    for i, layer in enumerate(layers):
-        if mask_idx is None:
-            if layer.get("layerType") == "mask":
-                mask_idx = i
-        elif (
-            i + 1 == len(layers)
-            or int(layers[i + 1].get("parentLayerIndex", -1)) < mask_idx
-        ):
-            # Either this is the last layer or the next layer doesn't belong to
-            # the mask. So, this is the last layer of the current mask.
-            layer.set(XflReader.MASK_START, mask_idx)
-            mask_idx = None
+    def get_timeline_length(self, layers):
+        timeline_len = None
+        # Only check <DOMLayer>s with a non-empty <frames> element
+        for layer in filter(lambda l: len(l) and len(l[0]), layers):
+            frames = layer[0]
+            layer_len = int(frames[-1].get("index")) + int(
+                frames[-1].get("duration", 1)
+            )
+            # Cache the layer len for SvgRenderer
+            frames.set(self.LAYER_LEN, layer_len)
+            timeline_len = (
+                layer_len if timeline_len is None else max(timeline_len, layer_len)
+            )
 
-    return Timeline(layers, get_timeline_length(layers) - 1)
-
-
-def get_timeline_length(layers):
-    length = None
-    # Only check <DOMLayer>s with a non-empty <frames> element
-    for layer in filter(lambda l: len(l) and len(l[0]), layers):
-        i = int(layer[0][-1].get("index")) + int(layer[0][-1].get("duration", 1))
-        length = i if length is None else max(length, i)
-
-    return length
+        return timeline_len
 
 
 class _UnzippedXflReader(CloseOnExit):
