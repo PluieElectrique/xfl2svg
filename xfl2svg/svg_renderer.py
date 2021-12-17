@@ -88,7 +88,7 @@ class SvgRenderer:
             defs: {element id: SVG element that goes in <defs>}
             body: List of SVG elements
         """
-        id_name = re.sub(r"[^A-Za-z0-9]", "_", unescape_entities(name))
+        id_name = re.sub(r"[^A-Za-z0-9]", "_", name)
 
         id = f"{id_name}_{frame_idx}"
         if inside_mask:
@@ -97,7 +97,7 @@ class SvgRenderer:
         defs = {}
         body = []
 
-        layers = self.xfl_reader.get_timeline(unescape_entities(name), type).layers
+        layers = self.xfl_reader.get_timeline(name, type).layers
 
         mask_is_active = False
         # Process layers from back to front
@@ -245,7 +245,7 @@ class SvgRenderer:
                 # A <color> element contains 1 <Color> child
                 color_effect = color_effect @ ColorEffect.from_xfl(element[-1][0])
             defs, body = self._render_timeline(
-                element.get("libraryItemName"),
+                unescape_entities(element.get("libraryItemName")),
                 self._get_loop_frame(element, frame_offset),
                 color_effect,
                 inside_mask,

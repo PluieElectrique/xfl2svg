@@ -60,15 +60,17 @@ class XflReader(CloseOnExit):
         self.symbol_paths = {}
 
         for scene in self.document.iterfind(".//{*}DOMTimeline"):
-            name = scene.get("name")
+            name = unescape_entities(scene.get("name"))
+            assert name not in self.scenes, f"Duplicate scene name: {name}"
             # Store layers for lazy processing
             self.scenes[name] = scene.find(".//{*}layers")
 
         for include in self.document.iterfind(".//{*}symbols/{*}Include"):
             path = include.get("href")
             # Remove the ".xml" extension
-            name = os.path.splitext(path)[0]
-            self.symbol_paths[unescape_entities(name)] = path
+            name = unescape_entities(os.path.splitext(path)[0])
+            assert name not in self.symbol_paths, f"Duplicate symbol name: {name}"
+            self.symbol_paths[name] = path
 
     def get_scene_names(self):
         return list(self.scenes.keys())
