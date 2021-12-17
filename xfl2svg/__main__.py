@@ -157,12 +157,15 @@ def main(args):
 
     for frame_idx in trange(first_frame, last_frame + 1):
         svg = svg_renderer.render(
-            args.timeline, frame_idx - 1, width, height, timeline_type
+            args.timeline, frame_idx - 1, width, height, timeline_type, copy=False
         )
 
         if args.center:
             # To center the body, we move <defs> to a new <svg>, change the old
             # <svg> to a centering <g>, and then append it in the new <svg>.
+            # NOTE: We're modifying the SVG after we passed `copy=False`, but
+            # we're only touching the <svg> element, which is actually not
+            # cached. Hacky, but it works.
             old_svg = svg.getroot()
             new_svg = ET.Element("svg", old_svg.attrib)
             new_svg.append(old_svg[0])

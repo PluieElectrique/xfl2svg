@@ -1,5 +1,6 @@
 """Render SVGs from XFL."""
 
+from copy import deepcopy
 from functools import lru_cache
 import re
 import warnings
@@ -31,7 +32,7 @@ class SvgRenderer:
         # cycle. This means SvgRenderer can only be cleaned up by GC.
         self._render_timeline = lru_cache(maxsize=TIMELINE_CACHE)(self._render_timeline)
 
-    def render(self, timeline_name, frame_idx, width, height, type="symbol"):
+    def render(self, timeline_name, frame_idx, width, height, type="symbol", copy=True):
         """Render a timeline to SVG.
 
         This is the main interface of SvgRenderer.
@@ -42,6 +43,9 @@ class SvgRenderer:
             width: Width of resulting SVG
             height: Height of resulting SVG
             type: Whether this timeline is a "symbol" or "scene"
+            copy: If True, return a copy of the SVG. This protects the internal
+                  cache from modifications. If you don't plan to modify any
+                  elements, set `copy=False` for better performance.
 
         Returns:
             SVG ElementTree
@@ -70,6 +74,9 @@ class SvgRenderer:
         defs_element = ET.SubElement(svg, "defs")
         defs_element.extend(defs.values())
         svg.extend(body)
+
+        if copy:
+            svg = deepcopy(svg)
 
         return ET.ElementTree(svg)
 
