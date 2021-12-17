@@ -1,6 +1,7 @@
 """Convert the XFL <DOMShape> element to SVG <path> elements."""
 
 import xml.etree.ElementTree as ET
+import warnings
 
 from xfl2svg.shape.edge import xfl_edge_to_svg_path
 from xfl2svg.shape.style import parse_fill_style, parse_stroke_style
@@ -34,7 +35,9 @@ def xfl_domshape_to_svg(domshape, mask=False):
 
     stroke_styles = {}
     for style in domshape.iterfind(".//{*}StrokeStyle"):
-        assert not mask, "Don't know how to handle strokes inside masks"
+        # TODO: Figure out how strokes are supposed to behave in masks
+        if mask:
+            warnings.warn("Strokes in masks are not supported")
         stroke_styles[style.get("index")] = parse_stroke_style(style[0])
 
     filled_paths, stroked_paths = xfl_edge_to_svg_path(

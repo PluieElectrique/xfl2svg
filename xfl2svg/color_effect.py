@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import re
 from typing import Optional
 import xml.etree.ElementTree as ET
+import warnings
 
 
 HEX_COLOR = re.compile(r"#[A-Za-z0-9]{6}")
@@ -85,7 +86,8 @@ class ColorEffect:
             )
 
         else:
-            raise Exception(f"Unknown color effect: {attrib}")
+            warnings.warn(f"Unknown color effect: {attrib}")
+            return cls()
 
         return cls((multiplier, offset))
 

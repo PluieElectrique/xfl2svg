@@ -49,7 +49,7 @@ def parse_fill_style(style):
         # TODO: Support RadialGradient
         warnings.warn("RadialGradient is not supported yet")
     else:
-        raise Exception(f"Unknown fill style: {xml_str(style)}")
+        warnings.warn(f"Unknown fill style: {xml_str(style)}")
 
     return attrib, extra_defs
 
@@ -60,11 +60,13 @@ def parse_stroke_style(style):
     Returns a dict of SVG style attributes.
     """
     if not style.tag.endswith("SolidStroke"):
-        raise Exception(f"Unknown stroke style: {xml_str(style)}")
+        warnings.warn(f"Unknown stroke style: {xml_str(style)}")
+        return {"fill": "none"}
 
     check_known_attrib(style, {"scaleMode", "weight", "joints", "miterLimit", "caps"})
     if style.get("scaleMode") != "normal":
-        raise Exception(f"Unknown `scaleMode` value: {style.get('scaleMode')}")
+        warnings.warn(f"Unknown `scaleMode` value: {style.get('scaleMode')}")
+        return {"fill": "none"}
 
     cap = style.get("caps", "round")
     if cap == "none":
@@ -79,7 +81,8 @@ def parse_stroke_style(style):
 
     fill = style[0][0]
     if not fill.tag.endswith("SolidColor"):
-        raise Exception(f"Unknown stroke fill: {xml_str(fill)}")
+        warnings.warn(f"Unknown stroke fill: {xml_str(fill)}")
+        return attrib
 
     update(
         attrib,

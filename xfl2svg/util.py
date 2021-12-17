@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import re
+import warnings
 
 CHARACTER_ENTITY_REFERENCE = re.compile(r"&#(\d+)")
 
@@ -15,7 +16,7 @@ def check_known_attrib(element, known):
     if not set(element.keys()) <= known:
         unknown = set(element.keys()) - known
         tag = element.tag.split("}")[1]
-        raise Exception(
+        warnings.warn(
             f"Unknown <{tag}> attributes: {element.attrib}\n"
             f"  Known keys:   {known}\n"
             f"  Unknown keys: {unknown}"
