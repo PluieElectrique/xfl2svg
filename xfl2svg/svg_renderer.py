@@ -27,7 +27,6 @@ class SvgRenderer:
 
     def __init__(self, xfl_reader, DOMSHAPE_CACHE_SIZE=2048):
         self.xfl_reader = xfl_reader
-        self.mask_num = 1
         # Ensure that each renderer has its own cache
         self._handle_domshape = lru_cache(maxsize=DOMSHAPE_CACHE_SIZE)(_handle_domshape)
 
@@ -122,37 +121,23 @@ class SvgRenderer:
                 mask_idx = layer.get(self.xfl_reader.MASK_START)
                 if mask_idx is not None:
                     mask_is_active = True
-                    # If a masked layer is transformed, then its mask must be
-                    # transformed by the same <g>. Otherwise, the mask will not
-                    # line up with the masked layer. This means that <mask>s
-                    # must be defined in the SVG body, within the same <g>s as
-                    # the layers they mask.
-                    # Now, suppose we had two instances of the same symbol
-                    # under different <g>s. If <mask> IDs were based on `id`,
-                    # then these symbols' <mask>s would have the same ID,
-                    # despite the masks being transformed by different <g>s.
-                    # This might produce an incorrect rendering.
-                    # So, <mask> IDs must reflect the current transformation.
-                    # We could track this through every method of SvgRenderer,
-                    # but it's easier to use a globally unique ID. This does
-                    # prevent us from applying lru_cache() to every method of
-                    # SvgRenderer, though.
-                    mask_id = "Mask_" + str(self.mask_num)
-                    self.mask_num += 1
+                    mask_id = f"Mask_{id}_{layer_idx}"
 
                     d, b = self._render_layer(
                         layers[mask_idx],
                         frame_idx,
                         # Animate appends "_MASK" for direct descendants of the
                         # mask layer.
-                        f"Mask_{id}_{layer_idx}_MASK",
+                        mask_id + "_MASK",
                         color_effect,
                         inside_mask=True,
                     )
                     defs.update(d)
                     mask = ET.Element("mask", {"id": mask_id})
                     mask.extend(b)
-                    body.append(mask)
+                    # Animate puts masks in the body, but we can dedup by
+                    # putting them in <defs>
+                    defs[mask_id] = mask
 
                     # Apply mask. We will end it by setting `mask_is_active` to
                     # False when we hit the actual mask layer.
