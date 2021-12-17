@@ -80,7 +80,11 @@ def parse_stroke_style(style):
     }
 
     fill = style[0][0]
-    if not fill.tag.endswith("SolidColor"):
+    if fill.tag.endswith("RadialGradient"):
+        # TODO: Support RadialGradient
+        warnings.warn("RadialGradient is not supported yet")
+        return attrib
+    elif not fill.tag.endswith("SolidColor"):
         warnings.warn(f"Unknown stroke fill: {xml_str(fill)}")
         return attrib
 
