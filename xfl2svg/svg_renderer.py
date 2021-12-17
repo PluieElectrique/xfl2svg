@@ -25,10 +25,11 @@ class SvgRenderer:
     # Cache the most recently used frame of a layer for faster frame lookups
     LAST_USED_FRAME = ET.QName("xfl2svg", "lastUsedFrame")
 
-    def __init__(self, xfl_reader, DOMSHAPE_CACHE_SIZE=2048):
+    def __init__(self, xfl_reader, TIMELINE_CACHE=8192):
         self.xfl_reader = xfl_reader
-        # Ensure that each renderer has its own cache
-        self._handle_domshape = lru_cache(maxsize=DOMSHAPE_CACHE_SIZE)(_handle_domshape)
+        # TODO: Don't use lru_cache on a method, as it creates a reference
+        # cycle. This means SvgRenderer can only be cleaned up by GC.
+        self._render_timeline = lru_cache(maxsize=TIMELINE_CACHE)(self._render_timeline)
 
     def render(self, timeline_name, frame_idx, width, height, type="symbol"):
         """Render a timeline to SVG.
@@ -287,6 +288,47 @@ class SvgRenderer:
 
         return defs, body
 
+    def _handle_domshape(self, domshape, id, color_effect, inside_mask):
+        """Convert an XFL <DOMShape> to SVG.
+
+        Args:
+            domshape: <DOMShape> element
+            id: ID for this element
+            color_effect: Color effect to apply to filled shapes. Ignored if
+                          `inside_mask` is True
+            inside_mask: If True, all filled shapes are set to #FFFFFF so that
+                         the resulting mask is fully transparent
+
+        Returns a tuple:
+            defs: {element id: SVG element that goes in <defs>}
+            body: List of SVG elements
+        """
+        defs = {}
+        body = []
+
+        fill_g, stroke_g, extra_defs = xfl_domshape_to_svg(domshape, inside_mask)
+        defs.update(extra_defs)
+
+        if fill_g is not None:
+            fill_id = f"{id}_FILL"
+            fill_g.set("id", fill_id)
+            defs[fill_id] = fill_g
+
+            fill_use = ET.Element("use", {HREF: "#" + fill_id})
+            if not inside_mask and not color_effect.is_identity():
+                defs[color_effect.id] = color_effect.to_svg()
+                fill_use.set("filter", f"url(#{color_effect.id})")
+            body.append(fill_use)
+
+        if stroke_g is not None:
+            stroke_id = f"{id}_STROKE"
+            stroke_g.set("id", stroke_id)
+            defs[stroke_id] = stroke_g
+
+            body.append(ET.Element("use", {HREF: "#" + stroke_id}))
+
+        return defs, body
+
     def _get_loop_frame(self, instance, frame_offset):
         """Calculate the frame to use for a symbol instance given the offset.
 
@@ -321,49 +363,3 @@ class SvgRenderer:
             return min(first_frame + frame_offset, last_frame)
         else:
             raise Exception(f"Unknown loop type: {loop_type}")
-
-
-# For efficiency, SvgRenderer wraps this function in an lru_cache(). I'm not
-# sure how XML elements are hashed, but it doesn't matter because `id` ensures
-# uniqueness. Also, we use the same XML elements over and over, so their hashes
-# do not change.
-def _handle_domshape(domshape, id, color_effect, inside_mask):
-    """Convert an XFL <DOMShape> to SVG, given a mask status and color effect.
-
-    Args:
-        domshape: <DOMShape> element
-        id: ID for this element
-        color_effect: Color effect to apply to filled shapes. Ignored if
-                      `inside_mask` is True
-        inside_mask: If True, all filled shapes are set to #FFFFFF so that
-                     the resulting mask is fully transparent
-
-    Returns a tuple:
-        defs: {element id: SVG element that goes in <defs>}
-        body: List of SVG elements
-    """
-    defs = {}
-    body = []
-
-    fill_g, stroke_g, extra_defs = xfl_domshape_to_svg(domshape, inside_mask)
-    defs.update(extra_defs)
-
-    if fill_g is not None:
-        fill_id = f"{id}_FILL"
-        fill_g.set("id", fill_id)
-        defs[fill_id] = fill_g
-
-        fill_use = ET.Element("use", {HREF: "#" + fill_id})
-        if not inside_mask and not color_effect.is_identity():
-            defs[color_effect.id] = color_effect.to_svg()
-            fill_use.set("filter", f"url(#{color_effect.id})")
-        body.append(fill_use)
-
-    if stroke_g is not None:
-        stroke_id = f"{id}_STROKE"
-        stroke_g.set("id", stroke_id)
-        defs[stroke_id] = stroke_g
-
-        body.append(ET.Element("use", {HREF: "#" + stroke_id}))
-
-    return defs, body
