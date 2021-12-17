@@ -50,7 +50,8 @@ class ColorEffect:
 
             tint_color = attrib.get("tintColor", "#000000")
             if not HEX_COLOR.fullmatch(tint_color):
-                raise Exception(f"Color isn't in hex format: {tint_color}")
+                warnings.warn(f"Color isn't in hex format: {tint_color}")
+                return cls()
 
             offset = (
                 tint_multiplier * int(tint_color[1:3], 16) / 255,
