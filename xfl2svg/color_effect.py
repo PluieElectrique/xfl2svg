@@ -38,9 +38,9 @@ class ColorEffect:
                 offset = (brightness, brightness, brightness, 0)
 
         # Tint: linearly interpolate between the original color and a tint color
-        elif "tintMultiplier" in attrib:
+        elif "tintMultiplier" in attrib or "tintColor" in attrib:
             # color * (1 - tint_multiplier) + tint_color * tint_multiplier
-            tint_multiplier = float(attrib["tintMultiplier"])
+            tint_multiplier = float(attrib.get("tintMultiplier", 0))
             multiplier = (
                 1 - tint_multiplier,
                 1 - tint_multiplier,
