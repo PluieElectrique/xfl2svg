@@ -209,8 +209,13 @@ class SvgRenderer:
         defs = {}
         body = []
 
-        # The last child of a <DOMFrame> is always <elements>
-        for element_idx, element in enumerate(frame[-1]):
+        # <elements> is usually the last child of <DOMFrame>, but not always.
+        # Using .find() would be cleaner, but it's much slower than this
+        elements_idx = -1
+        while not frame[elements_idx].tag.endswith("elements"):
+            elements_idx -= 1
+
+        for element_idx, element in enumerate(frame[elements_idx]):
             d, b = self._render_element(
                 element, f"{id}_{element_idx}", frame_offset, color_effect, inside_mask
             )
