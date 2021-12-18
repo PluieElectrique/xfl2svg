@@ -17,6 +17,9 @@ classifiers = [
 ]
 dynamic = ["version", "description"]
 
+[project.scripts]
+xfl2svg = "xfl2svg.__main__:main"
+
 [project.optional-dependencies]
 tqdm = ["tqdm"]
 

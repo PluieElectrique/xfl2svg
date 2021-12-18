@@ -1,70 +1,84 @@
-import argparse
-
-parser = argparse.ArgumentParser(description="Convert Adobe Animate XFL to SVG.")
-
-main_args = parser.add_argument_group(title="Main arguments")
-main_args.add_argument("xfl", help=".fla file or the directory of a decompressed .fla")
-main_args.add_argument("timeline", help="Timeline to render (scene or symbol)")
-main_args.add_argument("output_dir", help="Output directory")
-main_args.add_argument(
-    "--timeline-type",
-    choices=["scene", "symbol"],
-    help="Specify timeline type (default: try to guess)",
-)
-
-other_args = parser.add_argument_group(title="Other arguments")
-other_args.add_argument(
-    "--first-frame",
-    type=int,
-    default=1,
-    metavar="FRAME",
-    help="First frame to render (default: 1)",
-)
-other_args.add_argument(
-    "--last-frame",
-    type=int,
-    metavar="FRAME",
-    help="Last frame to render (default: last frame of timeline)",
-)
-other_args.add_argument("--width", type=float, help="SVG width (default: stage width)")
-other_args.add_argument(
-    "--height", type=float, help="SVG height (default: stage height)"
-)
-other_args.add_argument(
-    "--background", metavar="COLOR", help="Background color (default: stage color)"
-)
-other_args.add_argument(
-    "--no-background", action="store_true", help="Disable background"
-)
-other_args.add_argument(
-    "--center", action="store_true", help="Center output in viewport"
-)
-other_args.add_argument(
-    "--indent", action="store_true", help="Indent SVG (Python 3.9+)"
-)
-
-debug_args = parser.add_argument_group(title="Debug arguments")
-debug_args.add_argument("--print-scenes", action="store_true", help="Print scene names")
-debug_args.add_argument(
-    "--print-symbols", action="store_true", help="Print symbol names"
-)
-
-args = parser.parse_args()
+"""Command-line interface for xfl2svg."""
 
 
-# For responsiveness, imports go after argument parsing
-import os
-import re
-import sys
-import xml.etree.ElementTree as ET
+def main_imports():
+    # For responsiveness, we import after parsing arguments. It's messy, but
+    # allows us to still declare imports at the start of the module.
+    global os, re, sys, ET, trange, XflReader, SvgRenderer
 
-try:
-    from tqdm import trange
-except ImportError:
-    trange = range
+    import os
+    import re
+    import sys
+    import xml.etree.ElementTree as ET
 
-from xfl2svg.xfl_reader import XflReader
-from xfl2svg.svg_renderer import SvgRenderer
+    try:
+        from tqdm import trange
+    except ImportError:
+        trange = range
+
+    from xfl2svg.xfl_reader import XflReader
+    from xfl2svg.svg_renderer import SvgRenderer
+
+
+def parse_args():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Convert Adobe Animate XFL to SVG.")
+
+    main_args = parser.add_argument_group(title="Main arguments")
+    main_args.add_argument(
+        "xfl", help=".fla file or the directory of a decompressed .fla"
+    )
+    main_args.add_argument("timeline", help="Timeline to render (scene or symbol)")
+    main_args.add_argument("output_dir", help="Output directory")
+    main_args.add_argument(
+        "--timeline-type",
+        choices=["scene", "symbol"],
+        help="Specify timeline type (default: try to guess)",
+    )
+
+    other_args = parser.add_argument_group(title="Other arguments")
+    other_args.add_argument(
+        "--first-frame",
+        type=int,
+        default=1,
+        metavar="FRAME",
+        help="First frame to render (default: 1)",
+    )
+    other_args.add_argument(
+        "--last-frame",
+        type=int,
+        metavar="FRAME",
+        help="Last frame to render (default: last frame of timeline)",
+    )
+    other_args.add_argument(
+        "--width", type=float, help="SVG width (default: stage width)"
+    )
+    other_args.add_argument(
+        "--height", type=float, help="SVG height (default: stage height)"
+    )
+    other_args.add_argument(
+        "--background", metavar="COLOR", help="Background color (default: stage color)"
+    )
+    other_args.add_argument(
+        "--no-background", action="store_true", help="Disable background"
+    )
+    other_args.add_argument(
+        "--center", action="store_true", help="Center output in viewport"
+    )
+    other_args.add_argument(
+        "--indent", action="store_true", help="Indent SVG (Python 3.9+)"
+    )
+
+    debug_args = parser.add_argument_group(title="Debug arguments")
+    debug_args.add_argument(
+        "--print-scenes", action="store_true", help="Print scene names"
+    )
+    debug_args.add_argument(
+        "--print-symbols", action="store_true", help="Print symbol names"
+    )
+
+    return parser.parse_args()
 
 
 def die(err):
@@ -75,8 +89,8 @@ def die(err):
 def sanitize_filename(filename, extension="", MAX_BYTES=255):
     # Remove ASCII control characters
     filename = re.sub(r"[\x00-\x1f\x7f]", "", filename)
-    # The Windows forbidden characters are common enough that we replace them with an
-    # underscore to show that a character was replaced.
+    # The Windows forbidden characters are common enough that we replace them
+    # with an underscore to show that a character was replaced.
     filename = re.sub(r'[\\/:*?"<>|]', "_", filename)
     # Prepend an underscore to files starting with a dot or dash--this prevents
     # the file from being hidden or being interpreted as a flag on Unix-likes.
@@ -92,7 +106,10 @@ def sanitize_filename(filename, extension="", MAX_BYTES=255):
     return filename + extension
 
 
-def main(args):
+def main():
+    args = parse_args()
+    main_imports()
+
     # Check if ET.indent is available
     if not hasattr(ET, "indent"):
         die("--indent requires Python 3.9+")
@@ -157,7 +174,13 @@ def main(args):
 
     for frame_idx in trange(first_frame, last_frame + 1):
         svg = svg_renderer.render(
-            args.timeline, frame_idx - 1, width, height, timeline_type, copy=False
+            args.timeline,
+            frame_idx - 1,
+            width,
+            height,
+            timeline_type,
+            # We don't modify the SVG, so use `copy=False` to improve performance
+            copy=False,
         )
 
         if args.center:
@@ -199,4 +222,5 @@ def main(args):
     xfl_reader.close()
 
 
-main(args)
+if __name__ == "__main__":
+    main()
