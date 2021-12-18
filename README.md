@@ -48,7 +48,7 @@ There is no official documentation for XFL, so everything was discovered through
 * [SasQ's XFL notes](https://github.com/SasQ/SavageFlask/blob/master/doc/FLA.txt)
 * [Explanation of the XFL edge format on StackOverflow](https://stackoverflow.com/a/4077709)
 
-This project has no documentation of XFL either, but the code hopefully serves as a substitute. In particular, `shape/edge.py` is densely commented and explains how shapes and strokes are converted from XFL to SVG.
+This project has no documentation of XFL either, but the code hopefully serves as a substitute. In particular, [`shape/edge.py`](https://github.com/PluieElectrique/xfl2svg/blob/master/xfl2svg/shape/edge.py) is densely commented and explains how shapes and strokes are converted from XFL to SVG.
 
 For reference, here is an overview of the code:
 
