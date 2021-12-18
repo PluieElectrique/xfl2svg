@@ -126,9 +126,6 @@ class ColorEffect:
                 "in": "SourceGraphic",
                 "type": "matrix",
                 "values": matrix,
-                # This is useless since we don't chain together filter
-                # primitives, but Animate adds it, so we might as well.
-                "result": "result1",
             },
         )
         return element

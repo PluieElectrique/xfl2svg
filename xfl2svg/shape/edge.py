@@ -112,8 +112,8 @@ def parse_number(num: str) -> float:
 
 
 # Now, we can parse the edge format. To join segments into shapes, though, we
-# will need a way to reverse segments (for normalizing them such that the
-# filled shape is always on their left). That is, if we have a segment like:
+# will need a way to reverse segments (for normalizing them so that the filled
+# shape is always on the left). That is, if we have a segment like:
 #
 #                C
 #              /   \
@@ -249,7 +249,7 @@ def point_list_to_path_format(point_list: list) -> str:
 #         * If there are multiple segments to choose from, pick one and
 #           backtrack if you hit a dead end.
 #         * When all segments have been joined into shapes and converted,
-#           concatenate the path strings and put them in one SVG <path>
+#           concatenate the path strings and put them in *one* SVG <path>
 #           element. (This ensures that holes work correctly.) Finally, look up
 #           the fill attributes from the ID and assign them to the <path>.
 #
@@ -308,7 +308,7 @@ def point_lists_to_shapes(point_lists: list[tuple[list, str]]) -> dict[str, list
     # Add open point lists into `graph`
     for point_list, fill_id in point_lists:
         if point_list[0] == point_list[-1]:
-            # This point list is closed
+            # This point list is already a closed shape
             shapes[fill_id].append(point_list)
         else:
             graph[fill_id][point_list[0]].append(point_list)

@@ -252,13 +252,13 @@ class SvgRenderer:
             if not inside_mask and element[-1].tag.endswith("color"):
                 # A <color> element contains 1 <Color> child
                 color_effect = color_effect @ ColorEffect.from_xfl(element[-1][0])
+
             defs, body = self._render_timeline(
                 unescape_entities(element.get("libraryItemName")),
                 self._get_loop_frame(element, frame_offset),
                 color_effect,
                 inside_mask,
             )
-
         elif element.tag.endswith("DOMShape"):
             defs, body = self._handle_domshape(element, id, color_effect, inside_mask)
         elif element.tag.endswith("DOMGroup"):
