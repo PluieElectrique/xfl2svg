@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 import re
-from typing import Optional
 import xml.etree.ElementTree as ET
 import warnings
 
@@ -12,8 +11,8 @@ HEX_COLOR = re.compile(r"#[A-Za-z0-9]{6}")
 
 @dataclass(frozen=True)
 class ColorEffect:
-    # `None` is an identity effect
-    effect: Optional[tuple[tuple, tuple]] = None
+    multiplier: tuple = (1, 1, 1, 1)
+    offset: tuple = (0, 0, 0, 0)
 
     @classmethod
     def from_xfl(cls, element):
@@ -90,22 +89,17 @@ class ColorEffect:
             warnings.warn(f"Unknown color effect: {attrib}")
             return cls()
 
-        return cls((multiplier, offset))
+        return cls(multiplier, offset)
 
     def to_svg(self):
         """Create an SVG <filter> element from a ColorEffect."""
-        # This assert ensures that we avoid creating unnecessary <filter>s.
-        # Callers should ensure that is_identity() == False before converting.
-        assert self.effect is not None
-
-        multiplier, offset = self.effect
         # fmt: off
         matrix = (
             "{0} 0 0 0 {4} "
             "0 {1} 0 0 {5} "
             "0 0 {2} 0 {6} "
             "0 0 0 {3} {7}"
-        ).format(*multiplier, *offset)
+        ).format(*self.multiplier, *self.offset)
         # fmt: on
 
         element = ET.Element(
@@ -136,38 +130,30 @@ class ColorEffect:
                 f"expected type ColorEffect, but operand has type {type(other)}"
             )
 
-        # ColorEffects are immutable, so it's fine to return an existing instance.
-        if self.effect is None:
-            return other
-        elif other.effect is None:
-            return self
-        else:
-            # other is applied first, then self:
-            #     self @ (other @ X)
-            #   = self_m * (other_m * X + other_o) + self_o
-            #   = (self_m * other_m) * X + (self_m * other_o + self_o)
-            self_m, self_o = self.effect
-            other_m, other_o = other.effect
-            return ColorEffect(
-                (
-                    (
-                        self_m[0] * other_m[0],
-                        self_m[1] * other_m[1],
-                        self_m[2] * other_m[2],
-                        self_m[3] * other_m[3],
-                    ),
-                    (
-                        self_m[0] * other_o[0] + self_o[0],
-                        self_m[1] * other_o[1] + self_o[1],
-                        self_m[2] * other_o[2] + self_o[2],
-                        self_m[3] * other_o[3] + self_o[3],
-                    ),
-                )
-            )
+        # other is applied first, then self:
+        #     self @ (other @ X)
+        #   = self_m * (other_m * X + other_o) + self_o
+        #   = (self_m * other_m) * X + (self_m * other_o + self_o)
+        self_m, self_o = self.multiplier, self.offset
+        other_m, other_o = other.multiplier, other.offset
+        return ColorEffect(
+            (
+                self_m[0] * other_m[0],
+                self_m[1] * other_m[1],
+                self_m[2] * other_m[2],
+                self_m[3] * other_m[3],
+            ),
+            (
+                self_m[0] * other_o[0] + self_o[0],
+                self_m[1] * other_o[1] + self_o[1],
+                self_m[2] * other_o[2] + self_o[2],
+                self_m[3] * other_o[3] + self_o[3],
+            ),
+        )
 
     def is_identity(self):
         """Returns True if this effect does nothing."""
-        return self.effect is None or self.effect == ((1, 1, 1, 1), (0, 0, 0, 0))
+        return self.multiplier == (1, 1, 1, 1) and self.offset == (0, 0, 0, 0)
 
     @property
     def id(self):
