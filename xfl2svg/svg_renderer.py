@@ -349,23 +349,21 @@ class SvgRenderer:
         first_frame = int(instance.get("firstFrame", 0))
         if "lastFrame" in instance:
             last_frame = int(instance.get("lastFrame"))
+            loop_length = last_frame - first_frame + 1
         else:
             last_frame = self.xfl_reader.get_timeline(
                 unescape_entities(instance.get("libraryItemName"))
             ).last_frame
+            loop_length = last_frame + 1
 
         loop_type = instance.get("loop", "single frame")
 
         if loop_type == "single frame":
             return first_frame
         elif loop_type == "loop":
-            loop_length = last_frame - first_frame + 1
-            if loop_length <= 0:
-                raise Exception(
-                    f"Invalid loop length: {loop_length} "
-                    f"(first frame: {first_frame}, last frame: {last_frame})"
-                )
-            return first_frame + (frame_offset % loop_length)
+            # In some cases, first_frame >= loop_length, so we can't use
+            # `first_frame + (frame_offset % loop_length)`.
+            return (first_frame + frame_offset) % loop_length
         elif loop_type == "play once":
             return min(first_frame + frame_offset, last_frame)
         else:
