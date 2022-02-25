@@ -90,7 +90,7 @@ EDGE_TOKENIZER = re.compile(
 def parse_number(num: str) -> float:
     """Parse an XFL edge format number."""
     if num[0] == "#":
-        # Signed, 32-bit number in hex
+        # Signed, 32-bit fixed-point number in hex
         parts = num[1:].split(".")
         # Pad to 8 digits
         hex_num = "{:>06}{:<02}".format(*parts)
@@ -151,7 +151,7 @@ def parse_number(num: str) -> float:
 #
 # This next function converts the XFL edge format into point lists. Since each
 # "edges" attribute can contain multiple segments, but each point list only
-# represents one segment, this function yields point lists.
+# represents one segment, this function can yield multiple point lists.
 
 
 def edge_format_to_point_lists(edges: str) -> Iterator[list]:
@@ -182,8 +182,8 @@ def edge_format_to_point_lists(edges: str) -> Iterator[list]:
                 # Move to
                 if curr_point != prev_point:
                     # If a move command doesn't change the current point, we
-                    # can ignore it. Otherwise, we must yield the current point
-                    # list and begin a new one.
+                    # ignore it. Otherwise, a new segment is starting, so we
+                    # must yield the current point list and begin a new one.
                     yield point_list
                     point_list = [curr_point]
                     prev_point = curr_point
@@ -214,6 +214,8 @@ def point_list_to_path_format(point_list: list) -> str:
         while True:
             point = next(point_iter)
             command = "Q" if isinstance(point, tuple) else "L"
+            # SVG lets us omit the command letter if we use the same command
+            # multiple times in a row.
             if command != last_command:
                 path.append(command)
                 last_command = command
@@ -231,23 +233,25 @@ def point_list_to_path_format(point_list: list) -> str:
 # Finally, we can convert XFL <Edge> elements into SVG <path> elements. The
 # algorithm works as follows:
 
-#   First, convert the "edges" attributes into segments.
+#   First, convert the "edges" attributes into segments. Then:
 #
 #   For filled shapes:
 #     * For a given <Edge>, process each of its segments:
 #         * If the <Edge> has "fillStyle0", associate the fill style ID
 #           ("index" in XFL) with the segment.
 #         * If the <Edge> has "fillStyle1", associate the ID with the segment,
-#           reversed. This way, the shape is always to the left of the segment
-#           (arbitrary choice, the opposite works too).
+#           reversed. This way, the fill of the shape is always to the left of
+#           the segment (arbitrary choice--the opposite works too).
 #     * For each fill style ID, consider its segments:
 #         * Pick an unused segment. If it's already closed (start point equals
-#           final point), convert it to the SVG path format.
-#         * Otherwise, find a segment that starts with the current segment's
-#           end point and does not end on an already used point. Join it to the
-#           current segment and repeat until the shape is closed, then convert.
-#         * If there are multiple segments to choose from, pick one and
-#           backtrack if you hit a dead end.
+#           end point), convert it to the SVG path format.
+#         * Otherwise, if it's open, randomly append segments (making sure to
+#           match start and end points) until:
+#             1. The segment is closed. Convert and start over with a new,
+#                unused segment.
+#             2. The segment intersects with itself (i.e. the current end point
+#                equals the end point of a previous segment). Backtrack.
+#             3. There are no more valid segments. Backtrack.
 #         * When all segments have been joined into shapes and converted,
 #           concatenate the path strings and put them in *one* SVG <path>
 #           element. (This ensures that holes work correctly.) Finally, look up
@@ -268,7 +272,7 @@ def point_list_to_path_format(point_list: list) -> str:
 #
 # Assumptions:
 #   * Segments never cross. So, we only need to join them at their ends.
-#   * For filled shapes, there's only one way to join the segments so that no
+#   * For filled shapes, there's only one way to join segments such that no
 #     segment is left out. So, we don't need to worry about making the wrong
 #     decision when there are multiple segments to pick from.
 #
@@ -297,12 +301,12 @@ def point_lists_to_shapes(point_lists: list[tuple[list, str]]) -> dict[str, list
         point_lists: [(point_list, fill style ID), ...]
 
     Returns:
-        {fill style ID: [shape point list, ...]}
+        {fill style ID: [shape point list, ...], ...}
     """
-    # {fill style ID: {origin point: [point list, ...]}}
+    # {fill style ID: {origin point: [point list, ...], ...}, ...}
     graph = defaultdict(lambda: defaultdict(list))
 
-    # {fill style ID: [shape point list, ...]}
+    # {fill style ID: [shape point list, ...], ...}
     shapes = defaultdict(list)
 
     # Add open point lists into `graph`
@@ -360,8 +364,8 @@ def xfl_edge_to_svg_path(
 
     Args:
         edges_element: The <edges> element of a <DOMShape>
-        fill_styles: {fill style ID: style attribute dict}
-        stroke_styles: {stroke style ID: style attribute dict}
+        fill_styles: {fill style ID: style attribute dict, ...}
+        stroke_styles: {stroke style ID: style attribute dict, ...}
 
     Returns a tuple of lists, each containing <path> elements:
         ([filled path, ...], [stroked path, ...])
