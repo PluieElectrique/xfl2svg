@@ -91,7 +91,7 @@ def parse_stroke_style(style):
     update(
         attrib,
         ("stroke", "stroke-opacity", "stroke-miterlimit"),
-        (*parse_solid_color(fill), style.get("miterLimit")),
+        (*parse_solid_color(fill), style.get("miterLimit", "5")),
     )
 
     return attrib

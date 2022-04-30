@@ -208,6 +208,7 @@ def point_list_to_path_format(point_list: list) -> str:
     """Convert a point list into the SVG path format."""
     point_iter = iter(point_list)
     path = ["M", next(point_iter)]
+    first_point = path[1]
     last_command = "M"
 
     try:
@@ -223,10 +224,13 @@ def point_list_to_path_format(point_list: list) -> str:
             if command == "Q":
                 # Append control point and destination point
                 path.append(point[0])
-                path.append(next(point_iter))
+                point = next(point_iter)
+                path.append(point)
             else:
                 path.append(point)
     except StopIteration:
+        if point == first_point:
+            path.append("Z")
         return " ".join(path)
 
 
