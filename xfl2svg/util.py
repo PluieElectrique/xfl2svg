@@ -15,6 +15,10 @@ def check_known_attrib(element, known):
     """Ensure that an XML element doesn't have unknown attributes."""
     if not set(element.keys()) <= known:
         unknown = set(element.keys()) - known
+        if "}" not in element.tag:
+            warnings.warn(f"Unknown <{element.tag}> {element.attrib}\n")
+            return
+
         tag = element.tag.split("}")[1]
         warnings.warn(
             f"Unknown <{tag}> attributes: {element.attrib}\n"
@@ -42,4 +46,13 @@ def get_matrix(element):
             matrix.get("d") or "1",
             matrix.get("tx") or "0",
             matrix.get("ty") or "0",
+        ]
+    else:
+        return [
+            "1",
+            "0",
+            "0",
+            "1",
+            "0",
+            "0",
         ]
