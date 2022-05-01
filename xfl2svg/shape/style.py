@@ -88,10 +88,14 @@ def parse_stroke_style(style):
         warnings.warn(f"Unknown stroke fill: {xml_str(fill)}")
         return attrib
 
-    update(
-        attrib,
-        ("stroke", "stroke-opacity", "stroke-miterlimit"),
-        (*parse_solid_color(fill), style.get("miterLimit")),
-    )
+    update(attrib, ("stroke", "stroke-opacity"), parse_solid_color(fill))
+    if attrib["stroke-linejoin"] == "miter":
+        # If the XFL does not specify a miterLimit, Animate's SVG exporter will
+        # set stroke-miterlimit to 3. This seems to match what Flash does [*].
+        # But, in some cases, a limit of 5 better matches Animate's PNG render.
+        # So, that's what we use.
+        #
+        # [*]: https://github.com/ruffle-rs/ruffle/blob/d3becd9/core/src/avm1/globals/movie_clip.rs#L283-L290
+        attrib["stroke-miterlimit"] = style.get("miterLimit", "5")
 
     return attrib

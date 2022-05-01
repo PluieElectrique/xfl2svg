@@ -15,7 +15,8 @@ def check_known_attrib(element, known):
     """Ensure that an XML element doesn't have unknown attributes."""
     if not set(element.keys()) <= known:
         unknown = set(element.keys()) - known
-        tag = element.tag.split("}")[1]
+        # Remove namespace, if present
+        tag = re.match(r"(\{[^}]+\})?(.*)", element.tag)[2]
         warnings.warn(
             f"Unknown <{tag}> attributes: {element.attrib}\n"
             f"  Known keys:   {known}\n"
