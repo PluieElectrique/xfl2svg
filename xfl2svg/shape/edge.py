@@ -95,10 +95,10 @@ def parse_number(num: str) -> float:
         # Pad to 8 digits
         hex_num = "{:>06}{:<02}".format(*parts)
         num = int.from_bytes(bytes.fromhex(hex_num), "big", signed=True)
-        # Account for hex scaling and Animate's 20x scaling
+        # Account for hex scaling and Animate's 20x scaling (twips)
         return (num / 256) / 20
     else:
-        # Decimal number. Account for Animate's 20x scaling
+        # Decimal number. Account for Animate's 20x scaling (twips)
         return float(num) / 20
 
 
@@ -208,7 +208,6 @@ def point_list_to_path_format(point_list: list) -> str:
     """Convert a point list into the SVG path format."""
     point_iter = iter(point_list)
     path = ["M", next(point_iter)]
-    first_point = path[1]
     last_command = "M"
 
     try:
@@ -224,12 +223,20 @@ def point_list_to_path_format(point_list: list) -> str:
             if command == "Q":
                 # Append control point and destination point
                 path.append(point[0])
-                point = next(point_iter)
-                path.append(point)
+                path.append(next(point_iter))
             else:
                 path.append(point)
     except StopIteration:
-        if point == first_point:
+        if point_list[0] == point_list[-1]:
+            # Animate adds a "closepath" (Z) command to every filled shape and
+            # closed stroke. For shapes, it makes no difference, but for closed
+            # strokes, it turns two overlapping line caps into a bevel, miter,
+            # or round join, which does make a difference.
+            # TODO: It is likely that closed strokes can be broken into
+            # segments and spread across multiple Edge elements, which would
+            # require a function like point_lists_to_shapes(), but for strokes.
+            # For now, though, adding "Z" to any stroke that is already closed
+            # seems good enough.
             path.append("Z")
         return " ".join(path)
 
@@ -399,8 +406,6 @@ def xfl_edge_to_svg_path(
     shapes = point_lists_to_shapes(fill_edges)
     for fill_id, point_lists in shapes.items():
         path = ET.Element("path", fill_styles[fill_id])
-        # Animate ends each SVG path with the "closepath" (Z) command, but we
-        # shouldn't need it since shapes are always closed.
         path.set("d", " ".join(point_list_to_path_format(pl) for pl in point_lists))
         filled_paths.append(path)
 
