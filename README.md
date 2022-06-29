@@ -63,6 +63,8 @@ For reference, here is an overview of the code:
 * `color_effect.py`: Parses color effects (e.g. brightness, tint, alpha) used on symbols.
 * `util.py`: Utility functions.
 
+Also, XFL is closely related to Flash/SWF, so resources like the [SWF file format specification](https://archive.org/details/swf-file-format-spec/mode/2up) and [Ruffle's source code](https://github.com/ruffle-rs/ruffle) may be useful.
+
 ## Legal
 
 This program is licensed under the MIT License. See the `LICENSE` file for more information.
