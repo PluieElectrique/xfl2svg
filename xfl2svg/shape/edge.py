@@ -40,7 +40,7 @@ in how everything works, read on.
 
 from collections import defaultdict
 import re
-from typing import Iterator
+from typing import Dict, Iterator, List, Tuple
 import xml.etree.ElementTree as ET
 
 
@@ -305,7 +305,7 @@ def point_list_to_path_format(point_list: list) -> str:
 #                      +----->+
 
 
-def point_lists_to_shapes(point_lists: list[tuple[list, str]]) -> dict[str, list[list]]:
+def point_lists_to_shapes(point_lists: List[Tuple[list, str]]) -> Dict[str, List[list]]:
     """Join point lists and fill style IDs into shapes.
 
     Args:
@@ -368,9 +368,9 @@ def point_lists_to_shapes(point_lists: list[tuple[list, str]]) -> dict[str, list
 
 def xfl_edge_to_svg_path(
     edges_element: ET.Element,
-    fill_styles: dict[str, dict],
-    stroke_styles: dict[str, dict],
-) -> tuple[list[ET.Element], list[ET.Element]]:
+    fill_styles: Dict[str, dict],
+    stroke_styles: Dict[str, dict],
+) -> Tuple[List[ET.Element], List[ET.Element]]:
     """Convert the XFL <edges> element into SVG <path> elements.
 
     Args:

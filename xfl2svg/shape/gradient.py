@@ -4,6 +4,7 @@
 
 
 from dataclasses import dataclass
+from typing import Tuple
 import xml.etree.ElementTree as ET
 
 from xfl2svg.util import check_known_attrib, get_matrix
@@ -11,9 +12,9 @@ from xfl2svg.util import check_known_attrib, get_matrix
 
 @dataclass(frozen=True)
 class LinearGradient:
-    start: tuple[float, float]
-    end: tuple[float, float]
-    stops: tuple[tuple[float, str, str], ...]
+    start: Tuple[float, float]
+    end: Tuple[float, float]
+    stops: Tuple[Tuple[float, str, str], ...]
     spread_method: str
 
     @classmethod
