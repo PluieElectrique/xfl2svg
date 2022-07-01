@@ -4,6 +4,7 @@ import re
 import warnings
 
 CHARACTER_ENTITY_REFERENCE = re.compile(r"&#(\d+)")
+IDENTITY_MATRIX = ["1", "0", "0", "1", "0", "0"]
 
 
 def unescape_entities(s):
@@ -44,3 +45,5 @@ def get_matrix(element):
             matrix.get("tx") or "0",
             matrix.get("ty") or "0",
         ]
+
+    return IDENTITY_MATRIX
