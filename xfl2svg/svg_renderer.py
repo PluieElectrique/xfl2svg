@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 from xfl2svg.color_effect import ColorEffect
 from xfl2svg.shape import xfl_domshape_to_svg
-from xfl2svg.util import get_matrix, unescape_entities
+from xfl2svg.util import get_matrix, IDENTITY_MATRIX, unescape_entities
 
 
 # SVG 1.1 requires that we use the `xlink` namespace for `href`. SVG 2 doesn't,
@@ -287,7 +287,8 @@ class SvgRenderer:
         # For some reason, DOMGroup matrices are redundant and must be ignored.
         if not element.tag.endswith("DOMGroup"):
             matrix = get_matrix(element)
-            if matrix is not None:
+            # Don't output identity matrices to reduce identation and save space
+            if matrix is not None and matrix != IDENTITY_MATRIX:
                 matrix = ", ".join(matrix)
                 transform = ET.Element("g", {"transform": f"matrix({matrix})"})
                 transform.extend(body)
