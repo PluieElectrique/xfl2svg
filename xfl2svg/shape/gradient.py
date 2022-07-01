@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 
 from xfl2svg.util import check_known_attrib, get_matrix
 
+IDENTITY_MATRIX = ["1", "0", "0", "1", "0", "0"]
+
 
 @dataclass(frozen=True)
 class LinearGradient:
@@ -39,7 +41,7 @@ class LinearGradient:
         coordinates, which are more precise).
         """
 
-        a, b, _, _, tx, ty = map(float, get_matrix(element))
+        a, b, _, _, tx, ty = map(float, get_matrix(element) or IDENTITY_MATRIX)
         start = (a * -16384/20 + tx, b * -16384/20 + ty)  # fmt: skip
         end   = (a *  16384/20 + tx, b *  16384/20 + ty)  # fmt: skip
 
