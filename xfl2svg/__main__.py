@@ -111,7 +111,7 @@ def main():
     main_imports()
 
     # Check if ET.indent is available
-    if not hasattr(ET, "indent"):
+    if args.indent and not hasattr(ET, "indent"):
         die("--indent requires Python 3.9+")
 
     # Create XFL reader and SVG renderer
