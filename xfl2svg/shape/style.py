@@ -63,7 +63,7 @@ def parse_stroke_style(style):
         warnings.warn(f"Unknown stroke style: {xml_str(style)}")
         return {"fill": "none"}
 
-    check_known_attrib(style, {"scaleMode", "weight", "joints", "miterLimit", "caps"})
+    check_known_attrib(style, {"scaleMode", "weight", "joints", "miterLimit", "caps", "solidStyle"})
     if style.get("scaleMode") != "normal":
         warnings.warn(f"Unknown `scaleMode` value: {style.get('scaleMode')}")
         return {"fill": "none"}
@@ -78,6 +78,14 @@ def parse_stroke_style(style):
         "stroke-linejoin": style.get("joints", "round"),
         "fill": "none",
     }
+
+    solid = style.get("solidStyle")
+    if solid:
+        if solid != "hairline":
+            warnings.warn(f"Unknown `solidStyle` value: {style.get('solidStyle')}")
+        else:
+            # A hairline solidStyle overrides the 'weight' attribute.
+            attrib['stroke-width'] = "0.05"
 
     fill = style[0][0]
     if fill.tag.endswith("RadialGradient"):
