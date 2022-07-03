@@ -41,6 +41,7 @@ in how everything works, read on.
 from collections import defaultdict
 import re
 from typing import Dict, Iterator, List, Tuple
+import warnings
 import xml.etree.ElementTree as ET
 
 
@@ -314,54 +315,50 @@ def point_lists_to_shapes(point_lists: List[Tuple[list, str]]) -> Dict[str, List
     Returns:
         {fill style ID: [shape point list, ...], ...}
     """
-    # {fill style ID: {origin point: [point list, ...], ...}, ...}
     graph = defaultdict(lambda: defaultdict(list))
-
-    # {fill style ID: [shape point list, ...], ...}
     shapes = defaultdict(list)
+    points = defaultdict(set)
 
-    # Add open point lists into `graph`
     for point_list, fill_id in point_lists:
-        if point_list[0] == point_list[-1]:
-            # This point list is already a closed shape
-            shapes[fill_id].append(point_list)
-        else:
-            graph[fill_id][point_list[0]].append(point_list)
+        for source, target in zip(point_list[:-1], point_list[1:]):
+            graph[fill_id][source].append(target)
+        for point in point_list:
+            # Ignore control points since we don't want paths to start or end with
+            # them. They'll automatically get added to paths if they're needed.
+            if not isinstance(point, tuple):
+                points[fill_id].add(point)
 
-    def walk(curr_point, used_points, origin, fill_graph):
-        """Recursively join point lists into shapes."""
-        for i in range(len(fill_graph[curr_point])):
-            next_point_list = fill_graph[curr_point][i]
-            next_point = next_point_list[-1]
+    for fill_id in points:
+        unused_edges = graph[fill_id]
+        unused_points = points[fill_id]
+        generated_shapes = shapes[fill_id]
 
-            if next_point == origin:
-                # Found a cycle. This shape is now closed
-                del fill_graph[curr_point][i]
-                return next_point_list
-            elif next_point not in used_points:
-                # Try this point list
-                used_points.add(next_point)
-                shape = walk(next_point, used_points, origin, fill_graph)
-                if shape is None:
-                    # Backtrack
-                    used_points.remove(next_point)
-                else:
-                    del fill_graph[curr_point][i]
-                    # Concat this point list, removing the redundant start move
-                    return next_point_list + shape[1:]
+        # Make sure all non-control points get assigned to at least one shape.
+        while unused_points:
+            start = unused_points.pop()
 
-    # For each fill style ID, pick a random origin and join point lists into
-    # shapes with walk() until we're done.
-    for fill_id, fill_graph in graph.items():
-        for origin in fill_graph.keys():
-            while fill_graph[origin]:
-                point_list = fill_graph[origin].pop()
-                curr_point = point_list[-1]
+            edge = unused_edges[start].pop()
+            next_shape = [start, edge]
+            discovered_points = set()
 
-                shape = walk(curr_point, {origin, curr_point}, origin, fill_graph)
-                assert shape is not None, "Failed to build shape"
+            try:
+                while edge != start:
+                    if edge in unused_points:
+                        # Mark this point as assigned to a shape.
+                        unused_points.remove(edge)
+                        discovered_points.add(edge)
 
-                shapes[fill_id].append(point_list + shape[1:])
+                    edge = unused_edges[edge].pop()
+                    next_shape.append(edge)
+
+                generated_shapes.append(next_shape)
+            except IndexError:
+                # Undo since we failed to find a cycle.
+                unused_points.update(discovered_points)
+                for source, target in zip(next_shape[:-1], next_shape[1:]):
+                    unused_edges[source].append(target)
+                # Log the failure so we can come back to it later.
+                warnings.warn("Failed to find an edge cycle.")
 
     return shapes
 
