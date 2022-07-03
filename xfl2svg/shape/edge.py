@@ -399,7 +399,7 @@ def xfl_edge_to_svg_path(
                 fill_edges.append((list(reversed(point_list)), fill_id_right))
 
             # Convert right away since we don't need to join anything into shapes
-            if stroke_id is not None:
+            if stroke_id is not None and stroke_id in stroke_styles:
                 stroke_paths[stroke_id].append(point_list_to_path_format(point_list))
 
     filled_paths = []
