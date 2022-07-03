@@ -3,7 +3,7 @@
 import xml.etree.ElementTree as ET
 import warnings
 
-from xfl2svg.shape.gradient import LinearGradient
+from xfl2svg.shape.gradient import LinearGradient, RadialGradient
 from xfl2svg.util import check_known_attrib
 
 
@@ -47,7 +47,9 @@ def parse_fill_style(style):
         extra_defs[gradient.id] = gradient.to_svg()
     elif style.tag.endswith("RadialGradient"):
         # TODO: Support RadialGradient
-        warnings.warn("RadialGradient is not supported yet")
+        gradient = RadialGradient.from_xfl(style)
+        attrib["fill"] = f"url(#{gradient.id})"
+        extra_defs[gradient.id] = gradient.to_svg()
     else:
         warnings.warn(f"Unknown fill style: {xml_str(style)}")
 
