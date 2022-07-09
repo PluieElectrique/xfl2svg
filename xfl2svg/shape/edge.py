@@ -305,6 +305,90 @@ def point_list_to_path_format(point_list: list) -> str:
 #                      +----->+
 
 
+class EdgeGraph:
+    """This class represents a graph of edges.
+
+    Each edge is represented as a pair (source, target) with associated hashable data.
+    There exists an EdgeGraph edge from A to B is A's target is the same as B's source.
+
+    This class is used to find a set of cycles that covers all given edges.
+    """
+
+    def __init__(self):
+        # Standard graph data
+        self.vertices = set()
+        self.edges = defaultdict(set)
+
+        # Vertices "behind" a given target node
+        self.tails = defaultdict(set)
+        # Vertices "in front of" a given source node
+        self.heads = defaultdict(set)
+
+    def add(self, source, target, data=None):
+        vertex = (source, target, data)
+        self.vertices.add(vertex)
+
+        self.heads[source].add(vertex)
+        self.tails[target].add(vertex)
+
+        for incoming in self.tails[source]:
+            self.edges[incoming].add(vertex)
+
+        for outgoing in self.heads[target]:
+            self.edges[vertex].add(outgoing)
+
+    def get_cycle(self, v):
+        """Find a cycle by building a spanning tree.
+
+        This function builds a spanning tree rooted in vertex v until it hits v again. It
+        then returns the discovered path from v to v.
+        """
+        parents = {}
+        pending = set()
+
+        for child in self.edges[v]:
+            parents[child] = v
+            pending.add(child)
+
+        while pending:
+            curr_vertex = pending.pop()
+            if curr_vertex == v:
+                break
+
+            for child in self.edges[curr_vertex]:
+                if child in parents:
+                    continue
+                parents[child] = curr_vertex
+                pending.add(child)
+
+        if v not in parents:
+            # Exhausted all possibilities without finding a cycle.
+            return []
+
+        result = [v]
+        next_node = parents[v]
+        while next_node != v:
+            result.insert(0, next_node)
+            next_node = parents[next_node]
+
+        return result
+
+    def covering_cycles(self):
+        # Make sure every edge (vertex in the EdgeGraph) gets used at least once
+        pending = self.vertices.copy()
+
+        while pending:
+            start = pending.pop()
+            cycle = self.get_cycle(start)
+            if not cycle:
+                continue
+
+            yield cycle
+            for v in cycle:
+                if v in pending:
+                    pending.remove(v)
+
+
 def point_lists_to_shapes(point_lists: List[Tuple[list, str]]) -> Dict[str, List[list]]:
     """Join point lists and fill style IDs into shapes.
 
@@ -314,54 +398,20 @@ def point_lists_to_shapes(point_lists: List[Tuple[list, str]]) -> Dict[str, List
     Returns:
         {fill style ID: [shape point list, ...], ...}
     """
-    # {fill style ID: {origin point: [point list, ...], ...}, ...}
-    graph = defaultdict(lambda: defaultdict(list))
-
-    # {fill style ID: [shape point list, ...], ...}
+    graphs = defaultdict(EdgeGraph)
     shapes = defaultdict(list)
 
-    # Add open point lists into `graph`
     for point_list, fill_id in point_lists:
-        if point_list[0] == point_list[-1]:
-            # This point list is already a closed shape
-            shapes[fill_id].append(point_list)
-        else:
-            graph[fill_id][point_list[0]].append(point_list)
+        g = graphs[fill_id]
+        g.add(point_list[0], point_list[-1], tuple(point_list))
 
-    def walk(curr_point, used_points, origin, fill_graph):
-        """Recursively join point lists into shapes."""
-        for i in range(len(fill_graph[curr_point])):
-            next_point_list = fill_graph[curr_point][i]
-            next_point = next_point_list[-1]
+    for fill_id, g in graphs.items():
+        for cycle in g.covering_cycles():
+            next_shape = []
+            for _, _, path in cycle:
+                next_shape.extend(path)
 
-            if next_point == origin:
-                # Found a cycle. This shape is now closed
-                del fill_graph[curr_point][i]
-                return next_point_list
-            elif next_point not in used_points:
-                # Try this point list
-                used_points.add(next_point)
-                shape = walk(next_point, used_points, origin, fill_graph)
-                if shape is None:
-                    # Backtrack
-                    used_points.remove(next_point)
-                else:
-                    del fill_graph[curr_point][i]
-                    # Concat this point list, removing the redundant start move
-                    return next_point_list + shape[1:]
-
-    # For each fill style ID, pick a random origin and join point lists into
-    # shapes with walk() until we're done.
-    for fill_id, fill_graph in graph.items():
-        for origin in fill_graph.keys():
-            while fill_graph[origin]:
-                point_list = fill_graph[origin].pop()
-                curr_point = point_list[-1]
-
-                shape = walk(curr_point, {origin, curr_point}, origin, fill_graph)
-                assert shape is not None, "Failed to build shape"
-
-                shapes[fill_id].append(point_list + shape[1:])
+            shapes[fill_id].append(next_shape)
 
     return shapes
 
