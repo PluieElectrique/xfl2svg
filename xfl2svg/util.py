@@ -23,6 +23,7 @@ def check_known_attrib(element, known):
             f"  Known keys:   {known}\n"
             f"  Unknown keys: {unknown}"
         )
+        raise Exception()
 
 
 def get_matrix(element):
@@ -47,3 +48,20 @@ def get_matrix(element):
         ]
 
     return IDENTITY_MATRIX
+
+
+def merge_bounding_boxes(original, addition):
+    """Return a bounding box containing both input boxes. Each input box should be a
+    sequence (minX, minY, maxX, maxY)."""
+    if addition == None:
+        return original
+
+    if original == None:
+        return addition
+
+    return (
+        min(original[0], addition[0]),
+        min(original[1], addition[1]),
+        max(original[2], addition[2]),
+        max(original[3], addition[3]),
+    )

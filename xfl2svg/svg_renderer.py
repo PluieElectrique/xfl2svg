@@ -314,7 +314,7 @@ class SvgRenderer:
         defs = {}
         body = []
 
-        fill_g, stroke_g, extra_defs = xfl_domshape_to_svg(domshape, inside_mask)
+        fill_g, stroke_g, extra_defs, _ = xfl_domshape_to_svg(domshape, inside_mask)
         defs.update(extra_defs)
 
         if fill_g is not None:
